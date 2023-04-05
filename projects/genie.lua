@@ -516,7 +516,8 @@ project "engine"
 	includedirs { "../external/luajit/include", "../external/freetype/include" }
 
 	configuration { "linux" }
-		buildoptions { "`pkg-config --cflags gtk+-3.0`" }
+		-- buildoptions { "`pkg-config --cflags gtk+-3.0`" }
+		includedirs { "../external/nfd" }
 	
 	configuration { "vs20*" }
 		linkLib "lua51"
@@ -979,7 +980,9 @@ if build_studio then
 		end
 		
 		configuration { "linux" }
-			links {"gtk-3", "gobject-2.0"}
+		--	links {"gtk-3", "gobject-2.0"}
+			links { "nfd", "dbus-1" }
+			libdirs { "../external/nfd" }
 
 		configuration {"vs*"}
 			links { "winmm", "imm32", "version" }

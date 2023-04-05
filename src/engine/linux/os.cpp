@@ -31,7 +31,11 @@
 #include <X11/extensions/XInput2.h>
 #include <X11/cursorfont.h>
 #include <X11/Xmd.h>
+#ifdef DIALOG_GTK
 #include <gtk/gtk.h>
+#else
+#include "nfd.h"
+#endif
 
 
 #define _NET_WM_STATE_ADD 1
@@ -311,6 +315,10 @@ void init() {
 		XISelectEvents(G.display, root, &mask, 1);
 		G.has_raw_inputs = true;
 	}
+
+#ifndef DIALOG_GTK
+	NFD_Init();
+#endif
 }
 
 InputFile::InputFile() {
@@ -597,6 +605,9 @@ next:
 
 
 void destroyWindow(WindowHandle window) {
+#ifndef DIALOG_GTK
+	NFD_Quit();
+#endif
 	XUnmapWindow(G.display, (Window)window);
 	XDestroyWindow(G.display, (Window)window);
 }
@@ -954,6 +965,7 @@ void getCurrentDirectory(Span<char> output) {
 }
 
 static bool dialog(Span<char> out, const char* filter_str, const char* starting_file, bool is_dir, bool is_save) {
+#ifdef DIALOG_GTK
 	gtk_init_check(NULL, NULL);
 	GtkWidget* dialog = gtk_file_chooser_dialog_new(is_save	 ? "Save file"
 													: is_dir ? "Select folder"
@@ -1007,6 +1019,24 @@ static bool dialog(Span<char> out, const char* filter_str, const char* starting_
 
 	while (gtk_events_pending()) gtk_main_iteration();
 
+#define NFD_FreePath free
+#else
+	char default_ext[8] = "";
+	char* name = NULL;
+	nfdresult_t res;
+
+	// TODO: Handle filter.
+	if (is_save)
+		res = NFD_SaveDialog(&name, NULL, 0, starting_file, NULL);
+	else if (is_dir)
+		res = NFD_PickFolder(&name, starting_file);
+	else
+		res = NFD_OpenDialog(&name, NULL, 0, starting_file);
+
+	if (res != NFD_OKAY)
+		return false;
+#endif
+
 	if (name) {
 		copyString(out, name);
 		if (is_save) {
@@ -1015,7 +1045,7 @@ static bool dialog(Span<char> out, const char* filter_str, const char* starting_
 				catString(out, default_ext);
 			}
 		}
-		free(name);
+		NFD_FreePath(name);
 		return true;
 	}
 	return false;
